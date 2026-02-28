@@ -1,0 +1,143 @@
+DATABASE IMAGE STORAGE IMPLEMENTATION GUIDE
+=============================================
+
+WHAT WAS CHANGED:
+==================
+
+1. BACKEND CHANGES
+   - Created new Image model (src/models/Image.js) to store image data in MongoDB
+   - Updated uploads endpoint (src/routes/uploads.js) to:
+     * Store images in MongoDB instead of file system
+     * Receive image file data and metadata
+     * Return image ID as API URL: /api/uploads/{imageId}
+   - Added new GET /api/uploads/:id endpoint to retrieve images from database
+   - Removed static file serving from /uploads directory (index.js)
+
+2. FRONTEND CHANGES
+   - Updated image resolution logic to handle:
+     * /api/uploads/{id} - new database images
+     * asset:key - preset library images
+     * /uploads/path - old file system images (backward compatible)
+   - MultiImageUpload component already handles the new URL format
+   - Product galleries display images from database
+
+3. DATA FLOW
+   Seller Upload → File Buffer → MongoDB Image Collection → 
+   API Returns /api/uploads/{id} → Stored in Product → 
+   Frontend Requests → Backend Retrieves from DB → Image Displayed
+
+
+HOW TO TEST:
+=============
+
+STEP 1: Restart Backend Server
+   - Stop the backend server (Ctrl+C in terminal)
+   - Start it again: npm run dev
+   - MongoDB will auto-migrate on startup
+   
+STEP 2: Create Test Listing
+   1. Go to Seller Dashboard
+   2. Click "New listing" tab
+   3. Fill in product details:
+      - Name: "Test Product"
+      - Category: "Jewellery"
+      - Sub Category: "Bridal"
+      - Price: 5000
+      - Description: "Test product for image storage"
+      - Stock: 10
+   
+STEP 3: Upload Image
+   1. In the "Product Images" section, drag and drop an image
+   2. OR click to select an image from your computer
+   3. You should see:
+      - "Image uploaded" toast notification
+      - Image preview in the gallery
+      - Image count showing "1 / 5"
+   
+STEP 4: Upload Multiple Images
+   1. Upload 3-5 images total
+   2. Use arrow buttons to reorder images
+   3. First image should be marked "Main"
+   4. Verify all images are visible in preview
+   
+STEP 5: Publish Product
+   1. Click "Publish listing" button
+   2. You should see "Listing created" notification
+   3. Product should appear in "Your listings" section
+   
+STEP 6: View Product Images
+   1. Click on the product in "Your listings"
+   2. OR go to Products page and click product
+   3. Images should appear in the gallery
+   4. Use thumbnails or arrow buttons to switch images
+   
+STEP 7: Edit Product
+   1. In seller dashboard, click "Edit" on product
+   2. You can see all uploaded images
+   3. Add more images to reach max 5
+   4. Remove or reorder images
+   5. Click "Update listing"
+
+
+TROUBLESHOOTING:
+================
+
+IF Images Don't Appear:
+   ✓ Check console for errors (F12 → Console tab)
+   ✓ Verify MongoDB is running
+   ✓ Check if /api/uploads/{id} returns image data
+   ✓ Clear browser cache (Ctrl+Shift+Delete)
+
+IF Upload Fails:
+   ✓ Check file size < 4MB
+   ✓ Verify file is a valid image (JPG, PNG, etc)
+   ✓ Check backend logs for error messages
+   ✓ Ensure you're logged in as seller
+
+IF Database Connection Error:
+   ✓ Verify MONGODB_URI in .env is correct
+   ✓ Check if MongoDB service is running
+   ✓ Try restarting: npm run dev
+
+
+TECHNICAL DETAILS:
+==================
+
+Image Model Schema:
+   - filename: String (generated unique name)
+   - originalName: String (original file name)
+   - mimeType: String (e.g., image/jpeg)
+   - data: Buffer (binary image data)
+   - size: Number (file size in bytes)
+   - uploadedBy: ObjectId (seller user ID)
+   - timestamps: automatic (createdAt, updatedAt)
+
+Upload Response:
+   {
+     "url": "/api/uploads/{mongoId}",
+     "id": "{mongoId}",
+     "filename": "timestamp-safename.jpg"
+   }
+
+Image Retrieval:
+   GET /api/uploads/{id} → Returns image with:
+   - Content-Type: image/jpeg (or appropriate MIME type)
+   - Cache-Control: max-age=31536000 (1 year)
+   - ETag support for browser caching
+
+Database Size:
+   Images are stored as binary data in MongoDB
+   4 MB image limit enforced on upload
+   Multiple images can be added up to 5 per product
+
+
+NEXT STEPS:
+============
+
+Optional Enhancements:
+   - Add image compression before storage
+   - Implement image thumbnails
+   - Add image optimization/resizing
+   - Add bulk image operations
+   - Add image deletion from database
+   - Implement CDN integration
